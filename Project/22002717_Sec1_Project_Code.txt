@@ -1,0 +1,545 @@
+module top_module(clk, sw, btn_r, btn_l, btn_u, btn_d, btn_m, seg, dp, an);
+    input logic clk, btn_r, btn_l, btn_u, btn_d, btn_m;
+    input logic [15:0] sw;
+    logic [3:0] a, b, result, remainder;
+    output logic dp;
+    output logic [6:0] seg;
+    output logic [3:0] an;
+    logic button_r, button_l, button_u, button_d, button_m;
+    
+    debouncer r( clk, btn_r, button_r);
+    debouncer l( clk, btn_l, button_l);
+    debouncer u( clk, btn_u, button_u);
+    debouncer d( clk, btn_d, button_d);
+    debouncer m( clk, btn_m, button_m);
+    
+    processor prc(clk, sw[11:0], sw[15:9], button_r, button_l, button_u, button_d, button_m, a, b, result, remainder);
+    seven_seg_disp svn(clk, a, b, result, remainder, seg, dp, an);
+endmodule
+
+
+module processor(clk, sw_instruct, sw_data, btn_r, btn_l, btn_u, btn_d, btn_m, a, b, result, remainder);
+    input logic clk, btn_r, btn_l, btn_u, btn_d, btn_m;
+    input logic [11:0] sw_instruct;
+    input logic [6:0] sw_data;
+    logic [3:0] dp_mem_add, dp_mem_wd, dp_mem_rd, dp_reg_wd1, dp_reg_wd2, dp_reg_rd1, dp_reg_rd2;
+    logic dp_mem_we, dp_mem_re, dp_reg_we, dp_reg_re, reset;
+    logic [2:0] dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2;
+    
+    output logic [3:0] a, b, result, remainder;
+
+    control_unit controller(clk, reset, sw_instruct, sw_data, btn_r, btn_l, btn_u, btn_d, btn_m, dp_mem_add, dp_mem_wd, dp_mem_rd, 
+    dp_reg_wd1, dp_reg_wd2, dp_reg_rd1, dp_reg_rd2, dp_mem_we, dp_mem_re, dp_reg_we, dp_reg_re, dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2,
+    a, b, result, remainder);
+    
+    datapath dp(clk, reset, dp_mem_add, dp_mem_wd, dp_mem_rd, dp_reg_wd1, dp_reg_wd2, dp_reg_rd1, dp_reg_rd2, dp_mem_we, dp_mem_re, dp_reg_we, dp_reg_re,
+    dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2);
+endmodule
+
+module control_unit(clk, reset, sw_instruct, sw_data, btn_r, btn_l, btn_u, btn_d, btn_m, dp_mem_add, dp_mem_wd, dp_mem_rd, 
+dp_reg_wd1, dp_reg_wd2, dp_reg_rd1, dp_reg_rd2, dp_mem_we, dp_mem_re, dp_reg_we, dp_reg_re, dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2,
+a, b, result, remainder);
+    input logic clk, btn_r, btn_l, btn_u, btn_d, btn_m;
+    input logic [11:0] sw_instruct;
+    input logic [6:0] sw_data;
+    input logic [3:0] dp_reg_rd1, dp_reg_rd2;
+    output logic [3:0] dp_mem_add, dp_mem_wd, dp_mem_rd, dp_reg_wd1, dp_reg_wd2;
+    output logic dp_mem_we, reset, dp_mem_re, dp_reg_we, dp_reg_re;
+    output logic [2:0] dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2;
+    
+    logic mem_we, mem_re, isexternal, load, load_reg;
+    logic [11:0] mem_wd, mem_rd, reg_in, reg_out;
+    logic [2:0] mem_add, pc_add;
+    
+    output logic [3:0] a, b, result, remainder;
+
+    insturction_memory ins_mem(clk, reset, load, mem_we, mem_re, mem_add , mem_wd , mem_rd);
+    instruction_register ins_reg(clk, reset, load_reg, reg_in, reg_out, isexternal, sw_instruct);
+    program_counter pc(clk, reset, load, pc_add, isexternal);
+    controlfsm fsm(clk, reset, sw_instruct, sw_data, btn_r, btn_l, btn_u, btn_d, btn_m, dp_mem_add, dp_mem_wd, dp_mem_rd, 
+    dp_reg_wd1, dp_reg_wd2, dp_reg_rd1, dp_reg_rd2, dp_mem_we, dp_mem_re, dp_reg_we, dp_reg_re, dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2,
+    mem_we, mem_re, isexternal, load, load_reg, inst, mem_wd, mem_rd, reg_in, reg_out, mem_add, pc_add, a, b, result, remainder);
+endmodule
+
+module controlfsm(clk, reset, sw_instruct, sw_data, btn_r, btn_l, btn_u, btn_d, btn_m, dp_mem_add, dp_mem_wd, dp_mem_rd, 
+dp_reg_wd1, dp_reg_wd2, dp_reg_rd1, dp_reg_rd2, dp_mem_we, dp_mem_re, dp_reg_we, dp_reg_re, dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2,
+mem_we, mem_re, isexternal, load, load_reg, inst, mem_wd, mem_rd, reg_in, reg_out, mem_add, pc_add, a, b, result, remainder);
+    input logic clk, btn_r, btn_l, btn_u, btn_d, btn_m;
+    input logic [11:0] sw_instruct, mem_rd, inst, reg_out;
+    input logic [6:0] sw_data;
+    input logic [3:0] dp_reg_rd1, dp_reg_rd2;
+    output logic [3:0] dp_mem_add, dp_mem_wd, dp_mem_rd, dp_reg_wd1, dp_reg_wd2;
+    output logic dp_mem_we, reset, dp_mem_re, dp_reg_we, dp_reg_re;
+    output logic [2:0] dp_reg_wa1, dp_reg_wa2, dp_reg_ra1, dp_reg_ra2;
+    input logic [2:0] pc_add;
+    output logic mem_we, mem_re, isexternal, load, load_reg;
+    output logic [11:0] mem_wd, reg_in;
+    output logic [2:0] mem_add;
+    output logic [3:0] a, b, result, remainder;
+    assign reg_in = mem_rd;
+    
+    
+    typedef enum logic [3:0] {S0 = 4'b0000 , S1 = 4'b0001, S2 = 4'b0010, S3 = 4'b0011, S4 = 4'b0100,
+                              S5 = 4'b0101, S6 = 4'b0110, S7 = 4'b0111, S8 = 4'b1000, S9 = 4'b1001, S10 = 4'b1010,
+                              S11 = 4'b1011, S12 = 4'b1100, S13 = 4'b1101} statetype;
+    statetype state, nextstate;
+        
+    // state register
+    always_ff @ (posedge clk)
+        state <= nextstate;
+    
+    // next state logic
+    always_comb
+        case (state)
+        S0: nextstate = S1; 
+        S1: begin 
+                if(btn_m) nextstate = S2;
+                else if (btn_d) nextstate = S0;
+                else if (btn_u) nextstate = S3;
+                else if (btn_r) nextstate = S4;
+                else if (btn_l) nextstate = S5;
+                else nextstate = S1;
+            end
+        S2: nextstate = S1;
+        S3: nextstate = S1;
+        S4: nextstate = S6;
+        S5: nextstate = S6;
+        S6:
+            case (reg_out[11:9])
+                3'b000: nextstate = S7;
+                3'b001: nextstate = S8;
+                3'b010: nextstate = S9;
+                3'b011: nextstate = S10;
+                3'b100: nextstate = S11;
+                3'b101: nextstate = S12;
+                3'b110: nextstate = S13;
+            endcase
+        S7: nextstate = S1;
+        S8: nextstate = S1;
+        S9: nextstate = S1;
+        S10: nextstate = S1;
+        S11: nextstate = S1;
+        S12: nextstate = S1;
+        S13: nextstate = S1;
+        default: nextstate = S0;
+    endcase
+    
+    always_comb begin
+        case (state)
+        S0: begin
+            isexternal <= 0;
+            reset <= 1;
+            load <= 1;
+            mem_we <= 0;
+            mem_re <= 0;
+            load_reg <= 1;
+            dp_reg_we <= 0;
+            dp_reg_re <= 0;
+            dp_mem_we <= 0;
+            dp_mem_re <= 0;
+        end
+        S1: begin
+            reset <= 0;
+            dp_reg_we <= 0;
+            dp_reg_re <= 0;
+            dp_mem_we <= 0;
+            dp_mem_re <= 0;
+            mem_we <= 0;
+            mem_re <= 1;
+            load_reg <= 1;
+            load <= 1;
+        end
+        S2: begin
+            isexternal <= 0;
+            reset <= 0;
+            load <= 1;
+            mem_we <= 1;
+            mem_re <= 0;
+            load_reg <= 1;
+            dp_reg_we <= 0;
+            dp_reg_re <= 0;
+            dp_mem_we <= 0;
+            dp_mem_re <= 0;
+            
+            mem_wd <= sw_instruct;
+        end
+        S3: begin
+            isexternal <= 0;
+            load <= 1;
+            mem_we <= 0;
+            mem_re <= 0;
+            load_reg <= 1;
+            dp_reg_we <= 1;
+            dp_reg_re <= 0;
+            dp_mem_we <= 0;
+            dp_mem_re <= 0;
+            dp_reg_wa1 <= sw_data[2:0];
+            dp_reg_wd1 <= sw_data[6:3];
+        end
+        S4: begin
+            isexternal <= 1;
+            reset <= 0;
+            load <= 1;
+            mem_we <= 0;
+            mem_re <= 0;
+            load_reg <= 0;
+            //mem_add <= pc_add;
+        end
+        S5: begin
+            isexternal <= 0;
+            reset <= 0;
+            load <= 0;
+            mem_we <= 0;
+            mem_re <= 1;
+            load_reg <= 0;
+            mem_add <= pc_add;
+        end
+        S6: begin
+        load <= 1;
+        load_reg <= 1;
+        end
+        S7: begin
+        dp_reg_ra1 <= reg_out[6:4];
+        dp_mem_add <= reg_out[3:0];
+        dp_reg_we <= 1;
+        dp_reg_re <= 0;
+        dp_mem_we <= 0;
+        dp_mem_re <= 1;
+        end
+        S8: begin
+        dp_reg_ra1 <= reg_out[6:4];
+        dp_mem_add <= reg_out[3:0];
+        dp_reg_we <= 0;
+        dp_reg_re <= 1;
+        dp_mem_we <= 1;
+        dp_mem_re <= 0;
+        
+        dp_mem_wd <= dp_reg_rd1;
+        end
+        S9: begin
+        dp_reg_wa1 <= reg_out[8:6];
+        dp_reg_ra1 <= reg_out[5:3];
+        dp_reg_ra2 <= reg_out[2:0];
+        dp_reg_we <= 1;
+        dp_reg_re <= 1;
+        dp_mem_we <= 0;
+        dp_mem_re <= 0;
+        dp_reg_wd1 <= dp_reg_rd1 - dp_reg_rd2;
+        result <= dp_reg_rd1 - dp_reg_rd2;
+        
+        a <= dp_reg_rd1;
+        b <= dp_reg_rd2;
+        end
+        S10: begin
+        dp_reg_wa1 <= reg_out[8:6];
+        dp_reg_ra1 <= reg_out[5:3];
+        dp_reg_ra2 <= reg_out[2:0];
+        dp_reg_we <= 1;
+        dp_reg_re <= 1;
+        dp_mem_we <= 0;
+        dp_mem_re <= 0;
+        dp_reg_wd1 <= dp_reg_rd1 + dp_reg_rd2;
+        result <= dp_reg_rd1 + dp_reg_rd2;
+        
+        a <= dp_reg_rd1;
+        b <= dp_reg_rd2;
+        end
+        S11: begin
+        dp_reg_wa1 <= reg_out[8:6];
+        dp_reg_wa2 <= 0;
+        dp_reg_ra1 <= reg_out[5:3];
+        dp_reg_ra2 <= reg_out[2:0];
+        dp_reg_we <= 1;
+        dp_reg_re <= 1;
+        dp_mem_we <= 0;
+        dp_mem_re <= 0;
+        dp_reg_wd1 <= dp_reg_rd1 * dp_reg_rd2;
+        result <= dp_reg_rd1 * dp_reg_rd2;
+        
+        a <= dp_reg_rd1;
+        b <= dp_reg_rd2;
+        end
+        S12: begin
+        dp_reg_wa1 <= reg_out[8:6];
+        dp_reg_wa2 <= reg_out[8:6] + 1;
+        dp_reg_ra1 <= reg_out[5:3];
+        dp_reg_ra2 <= reg_out[2:0];
+        dp_reg_we <= 1;
+        dp_reg_re <= 1;
+        dp_mem_we <= 0;
+        dp_mem_re <= 0;
+        dp_reg_wd1 <= dp_reg_rd1 / dp_reg_rd2;
+        dp_reg_wd2 <= dp_reg_rd1 % dp_reg_rd2;
+        
+        a <= dp_reg_rd1;
+        b <= dp_reg_rd2;
+        result <= dp_reg_rd1 / dp_reg_rd2;
+        remainder <= dp_reg_rd1 % dp_reg_rd2;
+        end
+        S13: begin
+        dp_reg_ra1 <= reg_out[2:0];
+        dp_reg_we <= 0;
+        dp_reg_re <= 1;
+        dp_mem_we <= 0;
+        dp_mem_re <= 0;
+        load <= 1;
+        load_reg <= 1;
+    
+        result <= dp_reg_rd1;
+        end
+        default: begin
+            isexternal <= 0;
+            reset <= 1;
+            load <= 1;
+            mem_we <= 0;
+            mem_re <= 0;
+            load_reg <= 1;
+            dp_reg_we <= 0;
+            dp_reg_re <= 0;
+            dp_mem_we <= 0;
+            dp_mem_re <= 0;
+        end
+        endcase
+    end
+endmodule
+
+module insturction_memory(clk, reset, load, we, re, adr , wd , rd);
+    input logic clk, we, reset, re, load;
+    input logic [2:0] adr;
+    input logic [11:0] wd;
+    output logic [11:0] rd;
+    logic [2:0] queue_add;
+    integer i;
+    
+    logic [11:0] RAM[7:0];
+    
+    always_ff @(posedge clk)
+        if (reset) begin
+            for(i = 0; i < 8; i=i+1) 
+            begin
+                RAM[i] <= 'b0;
+            end
+            
+            queue_add <= 0;
+        end
+        else if (we) begin
+            RAM[queue_add] <= wd;
+            queue_add <= queue_add + 1;
+        end
+        
+        always_comb
+            if (re) begin
+                rd <= RAM[adr];
+            end
+endmodule
+
+module instruction_register(clk, reset, load, d, q, isexternal, ext);
+    input logic clk, reset, isexternal, load;
+    input logic [11:0] d;
+    input logic [11:0] ext;
+    output logic [11:0] q;
+    
+    always_ff @(posedge clk)
+        if (reset)
+            q <= 0;
+        else if (!load && !isexternal)
+            q <= d;
+        else if (isexternal)
+            q <= ext;
+        else
+            q <= q;
+endmodule
+
+module program_counter(clk, reset, load, q, isexternal);
+    input logic clk, reset, isexternal, load;
+    output logic [2:0] q;
+    
+    always_ff @(posedge clk)
+    begin
+        if (reset)
+            q <= 0; 
+        else if (!load && !isexternal)
+            q <= q + 1;
+        else q <= q;
+    end
+endmodule
+
+module datapath(clk, reset, mem_add, mem_wd, mem_rd, reg_wd1, reg_wd2, reg_rd1, reg_rd2, mem_we, mem_re, reg_we, reg_re,
+reg_wa1, reg_wa2, reg_ra1, reg_ra2);
+    input logic clk, reset;
+    input logic [3:0] mem_add, mem_wd, mem_rd, reg_wd1, reg_wd2;
+    output logic [3:0] reg_rd1, reg_rd2;
+    input logic mem_we, mem_re, reg_we, reg_re;
+    input logic [2:0] reg_wa1, reg_wa2, reg_ra1, reg_ra2;
+    
+    
+    data_memory data_mem(clk, reset, mem_we, mem_re, mem_add, mem_wd, mem_rd);
+    reg_file rf(clk, reset, reg_we, reg_re, reg_wa1, reg_wa2, reg_ra1, reg_ra2, reg_wd1, reg_wd2, reg_rd1, reg_rd2);
+    //alu(inst, reg_rd1, reg_rd2, result);
+    
+endmodule
+
+module data_memory(clk, reset, we, re, adr, wd , rd);
+    input logic clk, we, re, reset;
+    input logic [3:0] adr;
+    input logic [3:0] wd;
+    output logic [3:0] rd;
+    integer i;
+        
+    logic [3:0] RAM[15:0];
+    always_ff @(posedge clk)
+        if (reset)
+            for(i = 0; i < 16; i=i+1) 
+            begin
+                RAM[i] <= 'b0;
+            end
+        else begin
+            if (we) RAM[adr] <= wd;
+            if (re) rd <= RAM[adr];
+        end
+endmodule
+
+module reg_file(clk, reset, we, re, wa1, wa2, ra1, ra2, wd1, wd2, rd1, rd2);
+    input logic clk, we, re, reset;
+    input logic [2:0] wa1, wa2;
+    input logic [2:0] ra1, ra2;
+    input logic [3:0] wd1, wd2;
+    output logic [3:0] rd1, rd2;
+    integer i;
+    
+    logic [3:0] RAM[7:0];
+    always @(posedge clk)
+        if (reset)
+            for(i = 0; i < 8; i=i+1) 
+            begin
+                RAM[i] <= 'b0;
+            end
+        else begin
+            if (we) begin
+                RAM[wa1] <= wd1;
+                RAM[wa2] <= wd2;
+            end
+        end
+    
+    always_comb
+        if (re) begin
+            rd1 <= RAM[ra1];
+            rd2 <= RAM[ra2];
+        end
+endmodule
+
+module seven_seg_disp(
+    input clk, 
+    input [3:0] in3, in2, in1, in0,
+    output [6:0]seg, logic dp,
+    output [3:0] an
+    );
+    
+    localparam N = 18;
+    logic [N-1:0] count = {N{1'b0}};
+    always@ (posedge clk)
+        count <= count + 1;
+    
+     
+    logic [4:0]digit_val;
+    logic [3:0]digit_en;
+     
+    always@ (*)
+     begin
+     digit_en = 4'b1111;
+     digit_val = in0;
+     
+      case(count[N-1:N-2])
+        
+       2'b00 :  //select first 7Seg.
+        begin
+         digit_val = {1'b0, in0};
+         digit_en = 4'b1110;
+        end
+        
+       2'b01:  //select second 7Seg.
+        begin
+         digit_val = {1'b0, in1};
+         digit_en = 4'b1101;
+        end
+        
+       2'b10:  //select third 7Seg.
+        begin
+         digit_val = {1'b1, in2};
+         digit_en = 4'b1011;
+        end
+         
+       2'b11:  //select forth 7Seg.
+        begin
+         digit_val = {1'b0, in3};
+         digit_en = 4'b0111;
+        end
+      endcase
+     end
+     
+    
+    //Convert digit number to LED vector. LEDs are active low.
+    logic [6:0] sseg_LEDs; 
+    always @(*)
+     begin 
+      sseg_LEDs = 7'b1111111; //default
+      case( digit_val)
+       5'd0 : sseg_LEDs = 7'b1000000; //to display 0
+       5'd1 : sseg_LEDs = 7'b1111001; //to display 1
+       5'd2 : sseg_LEDs = 7'b0100100; //to display 2
+       5'd3 : sseg_LEDs = 7'b0110000; //to display 3
+       5'd4 : sseg_LEDs = 7'b0011001; //to display 4
+       5'd5 : sseg_LEDs = 7'b0010010; //to display 5
+       5'd6 : sseg_LEDs = 7'b0000010; //to display 6
+       5'd7 : sseg_LEDs = 7'b1111000; //to display 7
+       5'd8 : sseg_LEDs = 7'b0000000; //to display 8
+       5'd9 : sseg_LEDs = 7'b0010000; //to display 9
+       5'd10: sseg_LEDs = 7'b0001000; //to display a
+       5'd11: sseg_LEDs = 7'b0000011; //to display b
+       5'd12: sseg_LEDs = 7'b1000110; //to display c
+       5'd13: sseg_LEDs = 7'b0100001; //to display d
+       5'd14: sseg_LEDs = 7'b0000110; //to display e
+       5'd15: sseg_LEDs = 7'b0001110; //to display f   
+       5'd16: sseg_LEDs = 7'b0110111; //to display "="
+       default : sseg_LEDs = 7'b0111111; //dash
+      endcase
+    end
+     
+    assign an = digit_en;
+    assign seg = sseg_LEDs; 
+    assign dp = 1'b1; //turn dp off
+    
+endmodule
+
+module SlowClock(input clk, output slowClk);
+    logic [25:0] count = 0;
+    logic clkOut;
+    always@(posedge clk)
+        begin 
+            count <= count + 1;
+            if (count == 12500000)
+                begin
+                    count <= 0;
+                    clkOut = ~clkOut;
+                end
+        end
+    assign slowClk = clkOut;
+endmodule
+
+module FlipFlop(input logic clk, d, output logic q, qNot);
+    always_ff@(posedge clk)
+        begin
+        q <= d;
+        qNot <= !q;
+        end
+endmodule
+
+module debouncer(input logic clk, input logic button, output logic out);
+    logic slwClk, q1, q2, q2Not;
+    SlowClock slowDown(clk, slwClk);
+    FlipFlop ff1(slwClk, button, q1);
+    FlipFlop ff2(slwClk, button, q2);
+
+    assign q2Not = ~q2;
+    assign out = q1 & q2Not;
+endmodule

@@ -1,0 +1,241 @@
+MODULES
+-------------------------------------------
+module half_adder(input logic a, b, output logic s, c);
+    assign s = a ^ b;
+    assign c = a & b;
+endmodule
+
+module half_subtractor(input logic a, b, output logic d, bout);
+    assign d = a ^ b;
+    assign bout = ~a & b;
+endmodule
+
+module full_adder(input logic a, b, cin, output logic s, cout);
+    logic s0, c0, c1;
+    
+    half_adder ha(a, b, s0, c0);
+    half_adder ha2(s0, cin, s, c1);
+    or orgate(cout, c0, c1);
+endmodule
+
+module two_bit_adder(input logic a0, b0, a1, b1, cin0, output logic s0, s1, cout1);
+    logic cout0;
+    
+    full_adder fa(a0, b0, cin0, s0, cout0);
+    full_adder fa2(a1, b1, cout0, s1, cout1);
+endmodule
+
+module lab_calculator(input logic a, b, c, d, output logic y, z);
+    logic tmp_s, tmp_cout, tmp_d, tmp_bout, tmp_nand, tmp_xor;
+    
+    half_adder ha(a, b, tmp_s, tmp_cout);
+    half_subtractor hs(a, b, tmp_d, tmp_bout);
+    nand nandgate(tmp_nand, a, b);
+    xor xorgate(tmp_xor, a, b);
+    
+    assign y = c ? (d ? tmp_d : tmp_s) : (d ? tmp_nand : tmp_xor);
+    assign z = c ? (d ? tmp_bout : tmp_cout) : 0;
+endmodule
+
+TESTBENCHES
+-------------------------------------------
+module testbench_half_adder();
+    logic a, b;
+    logic s, c;
+
+    half_adder dut(a, b, s, c);
+    initial begin
+        a = 0; b = 0; #10;
+        b = 1; #10;
+        a = 1; b = 0; #10;
+        b = 1; #10;
+    end
+endmodule
+
+module testbench_half_subtractor();
+    logic a, b;
+    logic d, bout;
+    
+    half_subtractor dut(a, b, d, bout);
+    initial begin
+        a = 0; b = 0; #10;
+        b = 1; #10;
+        a = 1; b = 0; #10;
+        b = 1; #10;
+    end
+endmodule
+
+module testbench_full_adder();
+    logic a, b, cin;
+    logic s, cout;
+    
+    full_adder dut(a, b, cin, s, cout);
+    initial begin
+        a = 0; b = 0; cin = 0; #10;
+        cin = 1; #10;
+        b = 1; cin = 0; #10;
+        cin = 1; #10;
+        a = 1; b = 0; cin = 0; #10;
+        cin = 1; #10;
+        b = 1; cin = 0; #10;
+        cin = 1; #10;
+    end
+endmodule
+
+module testbench_two_bit_adder();
+    logic a0, b0, a1, b1, cin0;
+    logic s0, s1, cout1;
+    
+    two_bit_adder dut(a0, b0, a1, b1, cin0, s0, s1, cout1);
+    initial begin
+        a0 = 0; b0 = 0; a1 = 0; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        a1 = 1; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b0 = 1; a1 = 0; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        a1 = 1; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        a0 = 1; b0 = 0; a1 = 0; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        a1 = 1; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b0 = 1; a1 = 0; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+        a1 = 1; b1 = 0; cin0 = 0; #10;
+        cin0 = 1; #10;
+        b1 = 1; cin0 = 0; #10;
+        cin0 = 1; #10;
+    end
+endmodule
+
+module testbench_lab_calculator();
+    logic a, b, c, d;
+    logic y, z;
+    
+    lab_calculator dut(a, b, c, d, y, z);
+    initial begin
+        c = 0; d = 0; a = 0; b = 0; #10;
+        b = 1; #10;
+        a = 1; b = 0; #10;
+        b = 1; #10;
+        d = 1; a = 0; b = 0; #10;
+        b = 1; #10;
+        a = 1; b = 0; #10;
+        b = 1; #10;
+        c = 1; d = 0; a = 0; b = 0; #10;
+        b = 1; #10;
+        a = 1; b = 0; #10;
+        b = 1; #10;
+        d = 1; a = 0; b = 0; #10
+        b = 1; #10;
+        a = 1; b = 0; #10;
+        b = 1; #10;
+    end
+endmodule
+
+
+CONSTRAINTS
+-------------------------------------------
+
+HALF ADDER
+
+# Switches 
+set_property PACKAGE_PIN V17 [get_ports a] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports a] 
+set_property PACKAGE_PIN V16 [get_ports b] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports b] 
+
+  
+# LEDs 
+set_property PACKAGE_PIN U16 [get_ports s]  	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports s] 
+set_property PACKAGE_PIN E19 [get_ports c]  	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports c] 
+
+HALF SUBTRACTOR
+
+# Switches 
+set_property PACKAGE_PIN V17 [get_ports a] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports a] 
+set_property PACKAGE_PIN V16 [get_ports b] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports b] 
+
+  
+# LEDs 
+set_property PACKAGE_PIN U16 [get_ports d]  	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports d] 
+set_property PACKAGE_PIN E19 [get_ports cout]  	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports cout] 
+
+FULL ADDER
+
+# Switches 
+set_property PACKAGE_PIN V17 [get_ports a] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports a] 
+set_property PACKAGE_PIN V16 [get_ports b] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports b] 
+set_property PACKAGE_PIN W16 [get_ports cin] 	 	 	 	 	 
+          set_property IOSTANDARD LVCMOS33 [get_ports cin] 	
+
+  
+# LEDs 
+set_property PACKAGE_PIN U16 [get_ports s]  	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports s] 
+set_property PACKAGE_PIN E19 [get_ports cout]  	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports cout] 
+
+2 BIT ADDER
+
+# Switches 
+set_property PACKAGE_PIN V17 [get_ports a0] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports a0] 
+set_property PACKAGE_PIN V16 [get_ports b0] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports b0] 
+set_property PACKAGE_PIN W16 [get_ports a1] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports a1] 
+set_property PACKAGE_PIN W17 [get_ports b1] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports b1] 
+set_property PACKAGE_PIN W15 [get_ports cin0] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports cin0] 
+ 	
+# LEDs 
+set_property PACKAGE_PIN U16 [get_ports s0]                      
+  set_property IOSTANDARD LVCMOS33 [get_ports s0] 
+set_property PACKAGE_PIN E19 [get_ports s1]                      
+  set_property IOSTANDARD LVCMOS33 [get_ports s1] 
+set_property PACKAGE_PIN U19 [get_ports cout1]                      
+  set_property IOSTANDARD LVCMOS33 [get_ports cout1] 
+
+LAB CALCULATOR
+
+# Switches 
+set_property PACKAGE_PIN V17 [get_ports a] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports a] 
+set_property PACKAGE_PIN V16 [get_ports b] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports b] 
+set_property PACKAGE_PIN W16 [get_ports c] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports c] 
+set_property PACKAGE_PIN W17 [get_ports d] 	 	 	 	 	 
+ 	set_property IOSTANDARD LVCMOS33 [get_ports d] 
+
+ 	
+# LEDs 
+set_property PACKAGE_PIN U16 [get_ports y]                      
+  set_property IOSTANDARD LVCMOS33 [get_ports y] 
+set_property PACKAGE_PIN E19 [get_ports z]                      
+  set_property IOSTANDARD LVCMOS33 [get_ports z] 

@@ -1,0 +1,113 @@
+MODULES
+-------------------------------------------
+module one_to_two_dec(input e, a0, output y[1:0]);
+    assign y[0] = e & ~a0;
+    assign y[1] = e & a0;
+endmodule
+
+module two_to_four_dec(input e, a[1:0], output y[3:0]);
+logic m[3:0];
+    one_to_two_dec dec1(e, a[1], m[1:0]);
+    one_to_two_dec dec2(m[0], a[0], y[1:0]);
+    one_to_two_dec dec3(m[1], a[0], y[3:2]);
+endmodule
+
+module two_to_one_mux(input d[1:0], s, output y);
+    assign y = s ? d[1] : d[0];
+endmodule
+
+module four_to_one_mux(input d[3:0], s[1:0],
+output y);
+logic m[1:0];
+    two_to_one_mux mux1(d[1:0], s[0], m[0]);
+    two_to_one_mux mux2(d[3:2], s[0], m[1]);
+    two_to_one_mux mux3(m[1:0], s[1], y);
+endmodule
+
+module eight_to_one_mux(input d[7:0], s[2:0], output y);
+    logic m[1:0];
+    four_to_one_mux mux1(d[3:0], s[1:0], m[0]);
+    four_to_one_mux mux2(d[7:4], s[1:0], m[1]);
+    logic tmpA, tmpB, tmpC;
+    not(tmpC, s[2]);
+    and(tmpA, m[0], tmpC);
+    and(tmpB, m[1], s[2]);
+    or(y, tmpA, tmpB);
+endmodule
+
+module function_f(input a, b, c, d, output y);
+    logic m[7:0];
+    assign m = {0, ~d, ~d, ~d, d, d, d, 0};
+    eight_to_one_mux mux1(m, {a, b, c}, y);
+endmodule
+
+TESTBENCHES
+-------------------------------------------
+module tb_one_to_two_dec();
+	logic e, a0, y[1:0];
+
+	one_to_two_dec dut(e, a0, y[1:0]);
+	initial begin
+		e = 0; a0 = 0; #10;
+		a0 = 1; #10;
+		e = 1; a0 = 0; #10;
+		a0 = 1; #10;
+	end
+endmodule
+
+module tb_two_to_four_dec();
+    logic e, a[1:0], y[3:0];
+    two_to_four_dec dut(e, a[1:0], y[3:0]);
+    initial begin
+        e = 0; a[1] = 0; a[0] = 0; #10;
+        a[0] = 1; #10;
+        a[1] = 1; a[0] = 0; #10;
+        a[0] = 1; #10;
+        e = 1; a[1] = 0; a[0] = 0; #10;
+        a[0] = 1; #10;
+        a[1] = 1; a[0] = 0; #10;
+        a[0] = 1; #10;
+    end
+endmodule
+
+module tb_two_to_one_mux();
+	logic d[1:0], s, y;
+	two_to_one_mux dut(d[1:0], s, y);
+	initial begin
+		s = 0; d[1] = 0; d[0] = 0; #10;
+		d[0] = 1; #10;
+		d[1] = 1; d[0] = 0; #10;
+		d[0] = 1; #10;
+		s = 1; d[1] = 0; d[0] = 0; #10;
+		d[0] = 1; #10;
+		d[1] = 1; d[0] = 0; #10;
+		d[0] = 1; #10;
+	end
+endmodule
+
+module tb_four_to_one_mux();
+    logic d[3:0], s[1:0], y;
+    four_to_one_mux dut(d[3:0], s[1:0], y);
+    initial begin
+        s[1] = 0; s[0] = 0; d[0] = 0; #10; d[0] = 1; #10;
+        s[1] = 0; s[0] = 1; d[1] = 0; #10; d[1] = 1; #10;
+        s[1] = 1; s[0] = 0; d[2] = 0; #10; d[2] = 1; #10;
+        s[1] = 1; s[0] = 1; d[3] = 0; #10; d[3] = 1; #10;
+    end
+end module
+
+module tb_eight_to_one_mux();
+    logic d[7:0], s[2:0], y;
+    
+    eight_to_one_mux dut(d[7:0], s[2:0], y);
+    initial begin
+        s[2] = 0; s[1] = 0; s[0] = 0; d[0] = 0; #10; d[0] = 1; #10;
+        s[2] = 0; s[1] = 0; s[0] = 1; d[1] = 0; #10; d[1] = 1; #10;
+        s[2] = 0; s[1] = 1; s[0] = 0; d[2] = 0; #10; d[2] = 1; #10;
+        s[2] = 0; s[1] = 1; s[0] = 1; d[3] = 0; #10; d[3] = 1; #10;
+        s[2] = 1; s[1] = 0; s[0] = 0; d[4] = 0; #10; d[4] = 1; #10;
+        s[2] = 1; s[1] = 0; s[0] = 1; d[5] = 0; #10; d[5] = 1; #10;
+        s[2] = 1; s[1] = 1; s[0] = 0; d[6] = 0; #10; d[6] = 1; #10;
+        s[2] = 1; s[1] = 1; s[0] = 1; d[7] = 0; #10; d[7] = 1; #10;
+    end
+endmodule
